@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Lock, KeyRound, FileClock, Building2, ShieldCheck, ServerCog, EyeOff, ClipboardCheck } from "lucide-react";
 
 import { MarketingPageHero } from "@/components/marketing/page-hero";
@@ -72,6 +73,36 @@ export default function SecurityPage() {
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <FeatureBento items={CONTROLS} />
+        </div>
+      </section>
+      <section className="border-t border-border bg-surface py-12">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <div>
+            <h2 className="text-lg font-semibold">For your diligence team</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              The documents privacy and procurement reviews ask for, published rather than gated.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 text-sm font-medium">
+            <Link
+              href="/security/sub-processors"
+              className="rounded-md border border-border px-4 py-2 transition-colors hover:bg-accent"
+            >
+              Sub-processor register
+            </Link>
+            <Link
+              href="/legal/sla"
+              className="rounded-md border border-border px-4 py-2 transition-colors hover:bg-accent"
+            >
+              Service level agreement
+            </Link>
+            <Link
+              href="/status"
+              className="rounded-md border border-border px-4 py-2 transition-colors hover:bg-accent"
+            >
+              Live status
+            </Link>
+          </div>
         </div>
       </section>
     </>

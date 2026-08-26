@@ -26,6 +26,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
     links: [
       { href: "/about", label: "About" },
       { href: "/contact", label: "Contact sales" },
+      { href: "/status", label: "Status" },
     ],
   },
   {
@@ -33,6 +34,8 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
     links: [
       { href: "/legal/privacy", label: "Privacy" },
       { href: "/legal/terms", label: "Terms" },
+      { href: "/legal/sla", label: "Service level agreement" },
+      { href: "/security/sub-processors", label: "Sub-processors" },
       { href: "/legal/cookies", label: "Cookie preferences" },
     ],
   },
