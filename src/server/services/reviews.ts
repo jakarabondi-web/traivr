@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { krippendorffAlpha, type Rating } from "@/lib/analytics/agreement";
 import { openAdjudication } from "@/server/services/adjudication";
+import { postEarningApproved } from "@/server/services/ledger";
 import { recomputeQualityScore } from "@/server/services/quality";
 import { dispatchWebhookEvent } from "@/server/services/webhooks";
 
@@ -145,7 +146,7 @@ export async function submitReview(params: {
     // Approval is what creates payable work.
     if (params.decision === "APPROVED") {
       const pay = submission.task.project.payPerTaskCents ?? 0;
-      await tx.earning.create({
+      const earning = await tx.earning.create({
         data: {
           userId: submission.submittedById,
           projectId: submission.task.projectId,
@@ -154,6 +155,16 @@ export async function submitReview(params: {
           status: "APPROVED",
         },
       });
+      // Money owed to a trainer enters the books the moment it exists.
+      if (pay > 0) {
+        await postEarningApproved(tx, {
+          earningId: earning.id,
+          userId: submission.submittedById,
+          amountCents: pay,
+          actorId: params.reviewerId,
+          description: `Task approved on ${submission.task.project.name}`,
+        });
+      }
     }
 
     // A gold task the trainer got wrong is the strongest quality signal we

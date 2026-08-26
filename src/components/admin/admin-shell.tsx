@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Wallet,
   Receipt,
+  ArrowLeftRight,
   Scale,
   LifeBuoy,
   ShieldAlert,
@@ -74,6 +75,7 @@ function buildNavSections(counts: {
     {
       label: "Finance",
       items: [
+        { href: "/admin/finance", label: "Money movement", icon: ArrowLeftRight },
         { href: "/admin/payments", label: "Payouts", icon: Wallet, badge: counts.payoutQueue || undefined },
         { href: "/admin/invoices", label: "Invoices", icon: Receipt },
         { href: "/admin/disputes", label: "Disputes", icon: Scale },

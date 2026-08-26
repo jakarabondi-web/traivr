@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { krippendorffAlpha, type Rating } from "@/lib/analytics/agreement";
 import { recomputeQualityScore } from "@/server/services/quality";
+import { postEarningApproved, postEarningReversed } from "@/server/services/ledger";
 
 export class AdjudicationError extends Error {}
 
@@ -141,15 +142,25 @@ export async function resolveAdjudication(params: {
 
     // Overturned rejection — the trainer was owed this.
     if (nowApproved && !previouslyApproved) {
-      await tx.earning.create({
+      const pay = submission.task.project.payPerTaskCents ?? 0;
+      const earning = await tx.earning.create({
         data: {
           userId: submission.submittedById,
           projectId: submission.task.projectId,
           taskCount: 1,
-          baseCents: submission.task.project.payPerTaskCents ?? 0,
+          baseCents: pay,
           status: "APPROVED",
         },
       });
+      if (pay > 0) {
+        await postEarningApproved(tx, {
+          earningId: earning.id,
+          userId: submission.submittedById,
+          amountCents: pay,
+          actorId: params.adjudicatorId,
+          description: "Earning approved on adjudication (rejection overturned)",
+        });
+      }
     }
 
     // Overturned approval — reverse rather than delete, so the correction
@@ -167,6 +178,28 @@ export async function resolveAdjudication(params: {
       });
       if (earning) {
         await tx.earning.update({ where: { id: earning.id }, data: { status: "REVERSED" } });
+        // Reverse the ledger only if the approval was ever booked — a
+        // pending-review earning never reached the journal, so reversing
+        // it there would fabricate a correction for money never recorded.
+        const approvedPosting = await tx.ledgerTransaction.findUnique({
+          where: {
+            sourceType_sourceId_kind: {
+              sourceType: "Earning",
+              sourceId: earning.id,
+              kind: "earning.approved",
+            },
+          },
+        });
+        if (approvedPosting) {
+          const amount = earning.baseCents + earning.bonusCents + earning.adjustmentCents;
+          await postEarningReversed(tx, {
+            earningId: earning.id,
+            userId: submission.submittedById,
+            amountCents: amount,
+            actorId: params.adjudicatorId,
+            description: "Earning reversed on adjudication (approval overturned)",
+          });
+        }
       }
     }
 

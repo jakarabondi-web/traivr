@@ -833,6 +833,7 @@ model Project {
   goldTasks     GoldTask[]
   datasets      Dataset[]
   jurisdictionRules ProjectJurisdictionRule[]
+  invoiceLineItems InvoiceLineItem[]
 
   @@index([organizationId])
   @@index([status])
@@ -1433,15 +1434,111 @@ enum InvoiceStatus {
 model Invoice {
   id             String        @id @default(uuid())
   organizationId String
+  /// Human-readable invoice number (e.g. INV-0001), assigned when the
+  /// invoice is issued. Unique so a number can never point at two invoices.
+  number         String?       @unique
   amountCents    Int
   status         InvoiceStatus @default(DRAFT)
   dueDate        DateTime?
   paidAt         DateTime?
   createdAt      DateTime      @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lineItems    InvoiceLineItem[]
 
   @@map("invoices")
+}
+
+/// One billable line on an invoice. Line items are what make an invoice
+/// traceable: each one says what was billed, at what unit price, and —
+/// where the work came from a project — which project it covers.
+model InvoiceLineItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Int     @default(1)
+  unitCents   Int
+  amountCents Int
+  projectId   String?
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+// ---------------------------------------------------------------------------
+// Ledger — double-entry journal
+//
+// Every money event on the platform posts one balanced transaction here:
+// the sum of DEBIT lines always equals the sum of CREDIT lines. Rows are
+// append-only (nothing updates or deletes them; corrections post reversing
+// transactions), so the journal is the audit trail — the single place that
+// answers "what exactly went out or came in, when, and why".
+// ---------------------------------------------------------------------------
+
+enum LedgerAccount {
+  /// Money the platform actually holds (bank/provider balance).
+  CASH
+  /// Money clients owe us (invoices sent, not yet paid).
+  ACCOUNTS_RECEIVABLE
+  /// Revenue earned from client work (grows on the credit side).
+  CLIENT_REVENUE
+  /// Money we owe trainers (approved earnings not yet paid out).
+  TRAINER_PAYABLE
+  /// Cost of trainer work (grows on the debit side).
+  TRAINER_COST
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+model LedgerTransaction {
+  id          String   @id @default(uuid())
+  /// Machine-readable event kind, e.g. "earning.approved", "invoice.paid".
+  kind        String
+  /// Human-readable one-liner shown in the money-movement view.
+  description String
+  /// The domain record this posting traces back to ("Earning",
+  /// "PayoutRequest", "Invoice") and its id. The unique constraint makes
+  /// posting idempotent: the same event can never be recorded twice.
+  sourceType  String
+  sourceId    String
+  /// Admin who triggered the event, when one did (payout processed,
+  /// invoice marked paid); null for system-driven postings.
+  actorId     String?
+  /// The trainer this money concerns, for trainer-side events.
+  userId      String?
+  /// The client organization this money concerns, for client-side events.
+  organizationId String?
+  /// When the money event actually happened (may predate createdAt for
+  /// backfilled history).
+  occurredAt  DateTime
+  createdAt   DateTime @default(now())
+
+  lines LedgerLine[]
+
+  @@unique([sourceType, sourceId, kind])
+  @@index([occurredAt])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("ledger_transactions")
+}
+
+model LedgerLine {
+  id            String          @id @default(uuid())
+  transactionId String
+  account       LedgerAccount
+  direction     LedgerDirection
+  amountCents   Int
+
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([account])
+  @@map("ledger_lines")
 }
 
 // ---------------------------------------------------------------------------
