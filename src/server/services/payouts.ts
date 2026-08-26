@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { getPayoutProvider } from "@/lib/payments";
 import { decryptFieldOrLegacy } from "@/lib/security/field-encryption";
+import { postPayoutPaid } from "@/server/services/ledger";
 
 export class PayoutError extends Error {}
 
@@ -77,16 +78,26 @@ export async function processPayoutRequest(params: {
     return { status: "FAILED", mocked: result.mocked, detail: result.failureReason };
   }
 
-  await prisma.$transaction([
-    prisma.payoutRequest.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.payoutRequest.update({
       where: { id: request.id },
       data: { status: "PAID", providerReference: result.providerReference, processedAt: new Date() },
-    }),
-    prisma.earning.updateMany({
+    });
+    await tx.earning.updateMany({
       where: { payoutRequestId: request.id },
       data: { status: "PAID" },
-    }),
-    prisma.notification.create({
+    });
+    // Cash actually left the platform — book it in the same transaction
+    // that marks the payout paid, so the journal can never disagree with
+    // the payout's status.
+    await postPayoutPaid(tx, {
+      payoutRequestId: request.id,
+      userId: request.userId,
+      amountCents: request.amountCents,
+      actorId: params.actorId,
+      description: `Payout via ${provider.label} (${result.providerReference})`,
+    });
+    await tx.notification.create({
       data: {
         userId: request.userId,
         type: "payout_sent",
@@ -94,8 +105,8 @@ export async function processPayoutRequest(params: {
         body: `${(request.amountCents / 100).toFixed(2)} was sent via ${provider.label}.`,
         link: "/trainer/payments",
       },
-    }),
-    prisma.auditLog.create({
+    });
+    await tx.auditLog.create({
       data: {
         actorId: params.actorId,
         action: "payout.paid",
@@ -108,8 +119,8 @@ export async function processPayoutRequest(params: {
           mocked: result.mocked,
         },
       },
-    }),
-  ]);
+    });
+  });
 
   return { status: "PAID", mocked: result.mocked, detail: result.providerReference };
 }
