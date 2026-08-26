@@ -3,7 +3,10 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
+import { headers } from "next/headers";
+
 import { prisma } from "@/lib/db/prisma";
+import { checkRateLimit, clientIpFrom } from "@/lib/security/rate-limit";
 import type { GlobalRole } from "@/lib/permissions/roles";
 import { issueEmailVerification } from "@/server/services/email-verification";
 
@@ -34,6 +37,22 @@ export type RegisterState = {
 };
 
 export async function registerUser(_prev: RegisterState, formData: FormData): Promise<RegisterState> {
+  // Each signup creates a row and sends a verification email — both worth
+  // protecting from a scripted loop. Ten per IP per hour is far above any
+  // honest use of a signup form.
+  const throttle = await checkRateLimit({
+    bucket: "register",
+    id: clientIpFrom(await headers()),
+    limit: 10,
+    windowMs: 60 * 60_000,
+  });
+  if (!throttle.ok) {
+    return {
+      status: "error",
+      formError: "Too many sign-up attempts from this network. Try again later.",
+    };
+  }
+
   const parsed = registerSchema.safeParse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
