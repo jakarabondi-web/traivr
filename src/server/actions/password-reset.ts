@@ -3,8 +3,10 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { headers } from "next/headers";
 
 import { prisma } from "@/lib/db/prisma";
+import { checkRateLimit, clientIpFrom } from "@/lib/security/rate-limit";
 import { sendEmail } from "@/lib/email/client";
 import { brand } from "@/config/brand";
 import { appUrl } from "@/lib/app-url";
@@ -23,6 +25,26 @@ export async function requestPasswordReset(
 
   // Always return success to avoid leaking whether an email is registered.
   if (!parsed.success) return { status: "success" };
+
+  // Throttled per IP and per target address; the response stays the same
+  // "success" either way so the limiter is as silent about registered
+  // emails as the rest of this action. This is what keeps one IP from
+  // using the reset form to flood a person's inbox.
+  const [byIp, byEmail] = await Promise.all([
+    checkRateLimit({
+      bucket: "pw-reset-ip",
+      id: clientIpFrom(await headers()),
+      limit: 5,
+      windowMs: 15 * 60_000,
+    }),
+    checkRateLimit({
+      bucket: "pw-reset-email",
+      id: parsed.data.email.toLowerCase(),
+      limit: 3,
+      windowMs: 15 * 60_000,
+    }),
+  ]);
+  if (!byIp.ok || !byEmail.ok) return { status: "success" };
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
   if (user) {

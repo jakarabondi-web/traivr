@@ -16,6 +16,7 @@ import { decryptField } from "@/lib/security/field-encryption";
 import { isSupportedOAuthAccount } from "@/lib/auth/oauth-providers";
 import { resolveOAuthSignIn } from "@/server/services/oauth-account";
 import { recordSuccessfulLogin } from "@/lib/auth/login-events";
+import { checkRateLimit, clientIpFrom } from "@/lib/security/rate-limit";
 
 import { authConfig } from "./config";
 
@@ -72,6 +73,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
+
+        // Per-IP throttle on top of the per-account lockout below: the
+        // lockout stops a password spray against one account, this stops
+        // one machine spraying many accounts. Generous enough that a shared
+        // office IP with a few fumbled logins never notices it.
+        const throttle = await checkRateLimit({
+          bucket: "login",
+          id: clientIpFrom(request.headers),
+          limit: 20,
+          windowMs: 5 * 60_000,
+        });
+        if (!throttle.ok) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: email.toLowerCase() },

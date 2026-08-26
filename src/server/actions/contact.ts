@@ -2,8 +2,11 @@
 
 import { z } from "zod";
 
+import { headers } from "next/headers";
+
 import { sendEmail } from "@/lib/email/client";
 import { brand } from "@/config/brand";
+import { checkRateLimit, clientIpFrom } from "@/lib/security/rate-limit";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -33,6 +36,18 @@ export async function submitContactForm(_prev: ContactState, formData: FormData)
     }
     return { status: "error", errors };
   }
+
+  // The form relays straight to the sales inbox — cap what one IP can send
+  // so a bot can't turn it into a spam cannon. Reported as success: a
+  // spammer learns nothing, and a rare legitimate fifth message within the
+  // hour still reaches nobody worse than a full inbox would.
+  const throttle = await checkRateLimit({
+    bucket: "contact",
+    id: clientIpFrom(await headers()),
+    limit: 5,
+    windowMs: 60 * 60_000,
+  });
+  if (!throttle.ok) return { status: "success" };
 
   await sendEmail({
     to: brand.salesEmail,

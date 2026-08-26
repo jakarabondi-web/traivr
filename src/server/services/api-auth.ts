@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db/prisma";
 import { bearerFrom, digestsMatch, hashApiKey, looksLikeApiKey } from "@/lib/api/keys";
+import { checkRateLimit, clientIpFrom, rateLimitHeaders } from "@/lib/security/rate-limit";
+
+/** Requests per key per minute across the versioned API. */
+const API_KEY_LIMIT = 240;
+/** Unauthenticated attempts per IP per minute — enough for a misconfigured
+ *  client to notice, not enough to enumerate keys. */
+const API_ANON_LIMIT = 30;
 
 /**
  * Authentication and tenant scoping for the versioned client API.
@@ -26,10 +33,16 @@ export function isFailure<T extends object>(value: T | ApiFailure): value is Api
   return "response" in value;
 }
 
-export function apiError(status: number, code: string, message: string, extra?: object) {
+export function apiError(
+  status: number,
+  code: string,
+  message: string,
+  extra?: object,
+  headers?: Record<string, string>
+) {
   return NextResponse.json(
     { error: { code, message, ...extra } },
-    { status, headers: { "Cache-Control": "no-store" } }
+    { status, headers: { "Cache-Control": "no-store", ...headers } }
   );
 }
 
@@ -51,6 +64,25 @@ export async function authenticateApiRequest(
   const token = bearerFrom(request.headers.get("authorization"));
 
   if (!token || !looksLikeApiKey(token)) {
+    // Requests without a plausible key are limited by IP — this is the
+    // path a key-enumeration attempt lives on.
+    const anon = await checkRateLimit({
+      bucket: "api-anon",
+      id: clientIpFrom(request.headers),
+      limit: API_ANON_LIMIT,
+      windowMs: 60_000,
+    });
+    if (!anon.ok) {
+      return {
+        response: apiError(
+          429,
+          "rate_limited",
+          "Too many requests. Slow down and retry.",
+          undefined,
+          rateLimitHeaders(anon)
+        ),
+      };
+    }
     return {
       response: apiError(401, "unauthorized", "Provide a valid API key as a bearer token.", {
         docs: "/client/api",
@@ -59,6 +91,27 @@ export async function authenticateApiRequest(
   }
 
   const digest = hashApiKey(token);
+
+  // Well-formed keys are limited by the key itself (hashed — the digest is
+  // an opaque stable id), so one noisy integration can't starve an IP shared
+  // by other tenants, and rotating IPs doesn't reset the budget.
+  const limited = await checkRateLimit({
+    bucket: "api",
+    id: digest.slice(0, 32),
+    limit: API_KEY_LIMIT,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return {
+      response: apiError(
+        429,
+        "rate_limited",
+        `This key is limited to ${API_KEY_LIMIT} requests per minute. Retry after ${limited.retryAfterSeconds}s.`,
+        undefined,
+        rateLimitHeaders(limited)
+      ),
+    };
+  }
   const key = await prisma.apiKey.findUnique({
     where: { hashedKey: digest },
     include: { organization: true },
