@@ -114,4 +114,27 @@ if (result.error) {
   process.exit(1);
 }
 
-process.exit(result.status ?? 1);
+if ((result.status ?? 1) !== 0) {
+  process.exit(result.status ?? 1);
+}
+
+// Migrations succeeded — bring the double-entry ledger up to date with any
+// pre-ledger records. The backfill is idempotent (postings are unique per
+// source event), so running it on every deploy is a no-op once history is
+// on the books. Non-fatal by design: a backfill hiccup should show up
+// loudly in the build log, not block shipping the fix for it.
+console.log("\nℹ Running ledger backfill (idempotent)…");
+const backfill = spawnSync(
+  process.execPath,
+  [join(root, "node_modules", "tsx", "dist", "cli.mjs"), join(root, "scripts", "backfill-ledger.ts")],
+  { stdio: "inherit", env, cwd: root }
+);
+if (backfill.error || (backfill.status ?? 1) !== 0) {
+  console.warn(
+    "\n⚠ Ledger backfill did not complete cleanly — the deploy continues, but\n" +
+      "  run `npx tsx scripts/backfill-ledger.ts` manually and check\n" +
+      "  /admin/finance shows 'Books balanced'.\n"
+  );
+}
+
+process.exit(0);
