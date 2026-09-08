@@ -284,6 +284,11 @@ in `resolveOAuthSignIn`, not implicit adapter behavior.
   in the database and served through an authenticated download route.
 - **Background jobs** — no durable export or webhook queue. Exports run
   synchronously; webhook delivery is fire-and-forget with no retry queue.
+- **M-Pesa payouts** — deliberately fail closed. The current payout ledger is
+  USD-denominated, while Daraja requires whole KES amounts and asynchronous
+  settlement callbacks. Until an explicit conversion policy and authenticated
+  result handling are implemented, M-Pesa cannot simulate or mark a payout
+  successful.
 - **Rate limiting** (`src/lib/security/rate-limit.ts`) — implemented for
   password login, signup, contact, reset/resend and the versioned API. Uses
   shared Upstash counters when configured, otherwise per-instance memory.

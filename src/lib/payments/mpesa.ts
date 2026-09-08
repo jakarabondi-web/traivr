@@ -4,7 +4,8 @@ import { appUrl } from "@/lib/app-url";
 /**
  * M-Pesa payouts via Safaricom's Daraja B2C API.
  *
- * MOCKED unless the Daraja credentials below are set — see SECURITY.md.
+ * Disabled until explicit KES settlement amounts and authenticated result
+ * callbacks are wired. Missing credentials never produce a fake success.
  * Going live additionally requires a registered Safaricom business shortcode
  * and an initiator account with B2C permissions; those cannot be self-served.
  */
