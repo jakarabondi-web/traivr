@@ -229,6 +229,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const code = typeof raw?.code === "string" ? raw.code.trim() : null;
         if (!challengeToken || !code) return null;
 
+        // The first factor is already proven, but the second-factor code is
+        // still an online secret. Limit guesses by the single-use challenge
+        // token across serverless instances when shared counters are
+        // configured; the challenge expiry remains the hard upper bound.
+        const throttle = await checkRateLimit({
+          bucket: "two-factor",
+          id: challengeToken,
+          limit: 10,
+          windowMs: 5 * 60_000,
+        });
+        if (!throttle.ok) return null;
+
         const challenge = await prisma.twoFactorChallenge.findUnique({
           where: { token: challengeToken },
         });

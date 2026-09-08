@@ -50,6 +50,13 @@ export async function grantRole(_prev: ActionState, formData: FormData): Promise
 
   await prisma.$transaction([
     prisma.userRole.create({ data: { userId: parsed.data.userId, roleId: role.id } }),
+    // Force existing JWT sessions to rehydrate their role set on the next
+    // request. A role grant must take effect immediately, even in a browser
+    // that was already signed in when the change was made.
+    prisma.user.update({
+      where: { id: parsed.data.userId },
+      data: { sessionVersion: { increment: 1 } },
+    }),
     prisma.auditLog.create({
       data: {
         actorId: actor.id,
@@ -97,6 +104,13 @@ export async function revokeRole(_prev: ActionState, formData: FormData): Promis
 
   await prisma.$transaction([
     prisma.userRole.deleteMany({ where: { userId: parsed.data.userId, roleId: role.id } }),
+    // Existing JWTs carry the old role list. Bump the version so the next
+    // server-side auth check rejects those tokens instead of preserving
+    // access to the revoked surface until normal expiry.
+    prisma.user.update({
+      where: { id: parsed.data.userId },
+      data: { sessionVersion: { increment: 1 } },
+    }),
     prisma.auditLog.create({
       data: {
         actorId: actor.id,
@@ -136,7 +150,10 @@ export async function setUserStatus(_prev: ActionState, formData: FormData): Pro
   }
 
   await prisma.$transaction([
-    prisma.user.update({ where: { id: parsed.data.userId }, data: { status: parsed.data.status } }),
+    prisma.user.update({
+      where: { id: parsed.data.userId },
+      data: { status: parsed.data.status, sessionVersion: { increment: 1 } },
+    }),
     prisma.auditLog.create({
       data: {
         actorId: actor.id,
