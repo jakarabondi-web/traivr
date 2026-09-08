@@ -64,11 +64,11 @@ export const mpesaProvider: PayoutProvider = {
     }
 
     if (!creds) {
-      console.warn(
-        `[payments:mpesa:mock] No Daraja credentials — simulating B2C payout of ` +
-          `${input.amountCents} ${input.currency} to ${msisdn} (request ${input.payoutRequestId})`
-      );
-      return { ok: true, providerReference: `mock_mpesa_${input.payoutRequestId}`, mocked: true };
+      return { ok: false, failureReason: "M-Pesa is not configured for real payouts.", mocked: true };
+    }
+
+    if (input.currency !== "KES") {
+      return { ok: false, failureReason: "M-Pesa payouts require an explicit KES amount.", mocked: false };
     }
 
     const token = await fetchAccessToken(creds.consumerKey, creds.consumerSecret);
@@ -107,7 +107,12 @@ export const mpesaProvider: PayoutProvider = {
       };
     }
 
-    // B2C is asynchronous — final settlement arrives on the ResultURL webhook.
-    return { ok: true, providerReference: json.ConversationID, mocked: false };
+    // The caller only supports settled payouts. Until authenticated result
+    // handling exists, do not report an asynchronous acceptance as paid.
+    return {
+      ok: false,
+      failureReason: "M-Pesa accepted the request but settlement callbacks are not enabled; no payout was recorded.",
+      mocked: false,
+    };
   },
 };

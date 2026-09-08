@@ -40,6 +40,8 @@ export async function processPayoutRequest(params: {
   const result = await provider.send({
     payoutRequestId: request.id,
     amountCents: request.amountCents,
+    // M-Pesa is intentionally disabled until its KES settlement amount is
+    // explicitly recorded; USD cents must never be reinterpreted as KES.
     currency: "USD",
     destination,
     reference: `traivr_payout_${request.id}`,
