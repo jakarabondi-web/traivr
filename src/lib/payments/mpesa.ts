@@ -4,8 +4,8 @@ import { appUrl } from "@/lib/app-url";
 /**
  * M-Pesa payouts via Safaricom's Daraja B2C API.
  *
- * Disabled until explicit KES settlement amounts and authenticated result
- * callbacks are wired. Missing credentials never produce a fake success.
+ * Requires explicit KES settlement amounts and authenticated result callbacks.
+ * Missing credentials never produce a fake success.
  * Going live additionally requires a registered Safaricom business shortcode
  * and an initiator account with B2C permissions; those cannot be self-served.
  */
@@ -21,11 +21,12 @@ function credentials() {
   const shortcode = process.env.MPESA_SHORTCODE;
   const initiatorName = process.env.MPESA_INITIATOR_NAME;
   const securityCredential = process.env.MPESA_SECURITY_CREDENTIAL;
+  const callbackSecret = process.env.MPESA_CALLBACK_SECRET;
 
-  if (!consumerKey || !consumerSecret || !shortcode || !initiatorName || !securityCredential) {
+  if (!consumerKey || !consumerSecret || !shortcode || !initiatorName || !securityCredential || !callbackSecret) {
     return null;
   }
-  return { consumerKey, consumerSecret, shortcode, initiatorName, securityCredential };
+  return { consumerKey, consumerSecret, shortcode, initiatorName, securityCredential, callbackSecret };
 }
 
 async function fetchAccessToken(consumerKey: string, consumerSecret: string): Promise<string> {
@@ -68,7 +69,8 @@ export const mpesaProvider: PayoutProvider = {
       return { ok: false, failureReason: "M-Pesa is not configured for real payouts.", mocked: true };
     }
 
-    if (input.currency !== "KES") {
+    const providerAmount = input.providerAmount;
+    if (input.currency !== "KES" || typeof providerAmount !== "number" || !Number.isInteger(providerAmount) || providerAmount <= 0) {
       return { ok: false, failureReason: "M-Pesa payouts require an explicit KES amount.", mocked: false };
     }
 
@@ -83,12 +85,12 @@ export const mpesaProvider: PayoutProvider = {
         InitiatorName: creds.initiatorName,
         SecurityCredential: creds.securityCredential,
         CommandID: "BusinessPayment",
-        Amount: Math.round(input.amountCents / 100),
+        Amount: input.providerAmount,
         PartyA: creds.shortcode,
         PartyB: msisdn,
         Remarks: input.reference,
-        QueueTimeOutURL: `${callbackBase}/api/webhooks/mpesa/timeout`,
-        ResultURL: `${callbackBase}/api/webhooks/mpesa/result`,
+        QueueTimeOutURL: `${callbackBase}/api/webhooks/mpesa/timeout?token=${encodeURIComponent(creds.callbackSecret)}`,
+        ResultURL: `${callbackBase}/api/webhooks/mpesa/result?token=${encodeURIComponent(creds.callbackSecret)}`,
         Occasion: input.payoutRequestId,
       }),
     });
@@ -108,12 +110,6 @@ export const mpesaProvider: PayoutProvider = {
       };
     }
 
-    // The caller only supports settled payouts. Until authenticated result
-    // handling exists, do not report an asynchronous acceptance as paid.
-    return {
-      ok: false,
-      failureReason: "M-Pesa accepted the request but settlement callbacks are not enabled; no payout was recorded.",
-      mocked: false,
-    };
+    return { ok: "pending", providerReference: json.ConversationID, mocked: false };
   },
 };

@@ -106,10 +106,12 @@ export async function approvePayout(_prev: ActionState, formData: FormData): Pro
     const result = await processPayoutRequest({ payoutRequestId, actorId: session.user.id });
     revalidatePath("/admin/payments");
     return {
-      status: result.status === "PAID" ? "success" : "error",
+      status: result.status === "PAID" || result.status === "PROCESSING" ? "success" : "error",
       message:
         result.status === "PAID"
           ? `Payout sent${result.mocked ? " (mocked — no provider credentials configured)" : ""}.`
+          : result.status === "PROCESSING"
+            ? "Payout accepted by the provider and is awaiting settlement."
           : `Payout failed: ${result.detail}`,
     };
   } catch (err) {

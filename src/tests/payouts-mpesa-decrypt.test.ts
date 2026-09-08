@@ -36,6 +36,7 @@ const { processPayoutRequest } = await import("@/server/services/payouts");
 const { encryptField } = await import("@/lib/security/field-encryption");
 
 beforeEach(() => {
+  process.env.MPESA_USD_TO_KES_RATE = "1";
   payoutRequestUpdate.mockReset().mockResolvedValue({});
   earningUpdateMany.mockReset().mockResolvedValue({ count: 0 });
   notificationCreate.mockReset().mockResolvedValue({});
