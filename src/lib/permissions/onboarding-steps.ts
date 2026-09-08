@@ -33,7 +33,7 @@ const STEPS: { key: OnboardingStepKey; label: string; description: string; href?
   {
     key: "assessment",
     label: "Assessment",
-    description: "Pass a short qualification test in your domain.",
+    description: "Pass the screening quiz, then the qualification exam in your track.",
     href: "/trainer/assessments",
   },
   {
@@ -56,7 +56,7 @@ const STEPS: { key: OnboardingStepKey; label: string; description: string; href?
   {
     key: "approved",
     label: "Approved",
-    description: "Browse projects and start accepting paid work.",
+    description: "Explore available projects. Matching and paid work are not guaranteed.",
   },
 ];
 
@@ -78,7 +78,7 @@ const STAGE_POSITION: Record<TrainerGateState["stage"], number | null> = {
 };
 
 /**
- * Returns the five onboarding steps with their status, or `null` when a
+ * Returns the onboarding steps with their status, or `null` when a
  * stepper would be misleading (a decided or paused application).
  */
 export function onboardingSteps(gate: TrainerGateState): OnboardingStep[] | null {

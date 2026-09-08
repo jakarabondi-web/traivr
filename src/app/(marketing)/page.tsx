@@ -198,7 +198,6 @@ const TRAINER_BENEFITS = [
   "Reliable, on-time payments with full history",
 ];
 
-const SAMPLE_CLIENTS = ["Northwind Labs", "Meridian AI", "Solace Systems", "Anchorpoint", "Vantage Models", "Cobalt Research"];
 
 export default async function HomePage() {
   // OAuth and SSO sign-ins land here (they redirect to "/"), and this
@@ -254,31 +253,10 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Live, playable miniature of the actual task workflow — its own
-              stat row already covers tasks/experts/agreement, so the hero
-              doesn't need a second copy of the same numbers next to it. */}
+          {/* Illustrative practice task; no customer activity or assessment results. */}
           <div className="mx-auto w-full max-w-md">
             <InteractiveHero />
           </div>
-        </div>
-      </section>
-
-      {/* Trust */}
-      <section className="border-b border-border py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            Built for teams developing the next generation of AI
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-70">
-            {SAMPLE_CLIENTS.map((name) => (
-              <span key={name} className="text-sm font-semibold tracking-wide text-muted-foreground">
-                {name}
-              </span>
-            ))}
-          </div>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            Sample client names shown for illustration only.
-          </p>
         </div>
       </section>
 
@@ -342,11 +320,11 @@ export default async function HomePage() {
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-primary">03 · For experts</span>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-                From sign-up to your first paid task
+                Your path to project eligibility
               </h2>
               <p className="mt-4 max-w-md text-muted-foreground">
-                Five steps, start to finish — the same ones you&apos;ll see progress through once you&apos;re
-                signed in, not a simplified marketing version of them.
+                See the application, assessment, review, readiness and identity stages below.
+                Completing them makes you eligible for matching; paid work depends on project availability.
               </p>
               <Button size="lg" variant="violet" className="mt-6" asChild>
                 <Link href="/apply">

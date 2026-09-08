@@ -6,8 +6,6 @@ import { ArrowRight, Check, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
-const STAT_COLORS = ["text-primary", "text-accent-violet", "text-accent-teal"];
-
 /**
  * A working miniature of the pairwise-comparison task, so a visitor
  * experiences the product in the hero rather than reading about it.
@@ -19,7 +17,7 @@ type Sample = {
   domain: string;
   a: string;
   b: string;
-  /** Which response expert reviewers preferred, and why. */
+  /** Suggested answer for this illustrative example, and why. */
   expertPick: "a" | "b";
   rationale: string;
 };
@@ -83,7 +81,7 @@ export function InteractiveHero() {
             <Sparkles className="size-3.5" />
           </span>
           <p className="text-xs font-medium text-white/60">
-            Try a real task · {sample.domain}
+            Try a sample task · {sample.domain}
           </p>
         </div>
         <p className="text-[11px] tabular-nums text-white/40">
@@ -131,7 +129,7 @@ export function InteractiveHero() {
                   </span>
                   {revealed && isExpert ? (
                     <span className="flex items-center gap-1 text-[10px] font-semibold text-success">
-                      <Check className="size-3" /> Experts preferred
+                      <Check className="size-3" /> Sample answer
                     </span>
                   ) : null}
                   {revealed && isChoice && !isExpert ? (
@@ -154,7 +152,7 @@ export function InteractiveHero() {
                 matched ? "text-success" : "text-warning"
               )}
             >
-              {matched ? "You agreed with our expert reviewers." : "Our expert reviewers chose differently."}
+              {matched ? "You matched the sample answer." : "Compare your choice with the sample rationale."}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-white/60">{sample.rationale}</p>
             <button
@@ -168,28 +166,10 @@ export function InteractiveHero() {
           </div>
         ) : (
           <p className="mt-3 text-xs text-white/50">
-            This is what thousands of vetted specialists do on Traivr every day — at scale, with
-            multi-stage review behind every judgment.
+            Illustrative practice task. Choose a response to see the sample rationale.
+            Your choice is not submitted or scored as an application assessment.
           </p>
         )}
-      </div>
-
-      <div className="relative mt-3 grid grid-cols-3 gap-2">
-        {[
-          { value: "12.4k", label: "Tasks / week" },
-          { value: "340", label: "Verified experts" },
-          { value: "94.2%", label: "Reviewer agreement" },
-        ].map((s, i) => (
-          <div
-            key={s.label}
-            className="rounded-lg border border-white/10 bg-white/[0.04] p-2.5 text-center"
-          >
-            <p className={cn("font-mono text-lg font-bold tracking-tight", STAT_COLORS[i % STAT_COLORS.length])}>
-              {s.value}
-            </p>
-            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-white/50">{s.label}</p>
-          </div>
-        ))}
       </div>
     </div>
   );

@@ -21,15 +21,17 @@ type RegistrationStepData = {
 // — a progress claim on the marketing page has to match what actually
 // happens after signup, not a simplified or aspirational version of it.
 const REGISTRATION_STEPS: RegistrationStepData[] = [
-  { code: "ACCOUNT", title: "Create your account", desc: "Sign up as a trainer or an AI company in under a minute.", icon: UserPlus },
-  { code: "APPLICATION", title: "Submit your application", desc: "Tell us your domain and background — the fields that actually get reviewed.", icon: ClipboardList },
-  { code: "ASSESSMENT", title: "Pass a qualification assessment", desc: "A short, domain-specific test of evaluation judgment, not trivia.", icon: ClipboardCheck },
-  { code: "IDENTITY", title: "Verify your identity", desc: "A photo ID and a selfie confirm you're a real, accountable person.", icon: Fingerprint },
-  { code: "MATCHING", title: "Get matched to paid work", desc: "Once approved, browse live projects in your domain and start earning.", icon: Rocket },
+  { code: "ACCOUNT", title: "Create your account", desc: "Register and verify your email before signing in.", icon: UserPlus },
+  { code: "APPLICATION", title: "Submit your application", desc: "Tell us about your background, domain, skills and languages.", icon: ClipboardList },
+  { code: "ASSESSMENT", title: "Complete screening and qualification", desc: "Pass the screening quiz, then the qualification exam in your chosen track.", icon: ClipboardCheck },
+  { code: "REVIEW", title: "Wait for application review", desc: "Our operations team reviews your application and assessment before deciding on approval.", icon: ClipboardCheck },
+  { code: "READINESS", title: "Complete readiness calibration", desc: "After approval, complete the calibration tasks for your domain.", icon: ClipboardList },
+  { code: "IDENTITY", title: "Verify your identity", desc: "Complete identity verification as the final check before accessing client work.", icon: Fingerprint },
+  { code: "MATCHING", title: "Explore available projects", desc: "Apply for projects that fit your skills. Approval does not guarantee a match or paid work.", icon: Rocket },
 ];
 
 function StepRow({ step, index }: { step: RegistrationStepData; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLLIElement>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ function StepRow({ step, index }: { step: RegistrationStepData; index: number })
   }, []);
 
   return (
-    <div
+    <li
       ref={ref}
       className={cn(
         "relative flex gap-5 pb-12 transition-all duration-700 ease-out last:pb-0",
@@ -75,16 +77,16 @@ function StepRow({ step, index }: { step: RegistrationStepData; index: number })
         <h3 className="mt-1 text-lg font-semibold tracking-tight">{step.title}</h3>
         <p className="mt-1.5 max-w-md text-sm text-muted-foreground">{step.desc}</p>
       </div>
-    </div>
+    </li>
   );
 }
 
 export function RegistrationSteps() {
   return (
-    <div className="relative">
+    <ol className="relative" aria-label="Application stages">
       {REGISTRATION_STEPS.map((step, i) => (
         <StepRow key={step.code} step={step} index={i} />
       ))}
-    </div>
+    </ol>
   );
 }

@@ -56,8 +56,9 @@ export default function ForExpertsPage() {
         <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-semibold tracking-tight">Start your application</h2>
           <p className="mt-3 text-muted-foreground">
-            Applications take about 20 minutes and include a short qualification assessment in your area of
-            expertise.
+            Apply, complete screening and qualification, then wait for review. After approval,
+            complete readiness calibration and identity verification. Time varies by track,
+            and approval does not guarantee available projects or paid work.
           </p>
           <Button size="lg" variant="violet" className="mt-6" asChild>
             <Link href="/apply">

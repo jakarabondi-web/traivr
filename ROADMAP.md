@@ -20,7 +20,7 @@ should be updated at the end of each implementation phase.
 ## Phase 2 — Marketing & authentication ✅
 
 - Homepage, For AI companies, For experts, Services, Security, Pricing,
-  Resources, About, Contact (working form → mocked email), Apply, legal
+  Resources, About, Contact (form → Resend when configured, otherwise mock), Apply, legal
   stubs (Privacy/Terms/Cookies)
 - Login, Register (role-aware), Forgot password, Reset password — all wired
   to real server actions and the Postgres-backed `User` model
@@ -163,9 +163,12 @@ domain. Session handoff from the callback route uses a single-use
 with `iss`, `aud`, `nonce`, and expiry all checked. No just-in-time
 provisioning, by design — see `SECURITY.md`.
 
-**Not built:** webhook dispatch, export processing workers, SAML/SCIM,
-API rate limiting, real payment-provider integrations beyond the
-Stripe Connect and M-Pesa paths already in place, object storage.
+**Built:** synchronous JSONL/CSV exports, outbound webhook dispatch, API rate
+limiting with optional shared Upstash counters, and private object storage for
+manual identity verification. Provider configuration still requires validation.
+
+**Not built:** durable export/webhook workers and retries, SAML/SCIM, and
+additional payment integrations beyond the Stripe Connect and M-Pesa paths.
 
 ## Cross-cutting, not yet done
 
@@ -175,6 +178,7 @@ Stripe Connect and M-Pesa paths already in place, object storage.
   agreement metrics, tenant isolation, the import parser, rubrics, API-key
   handling, request validation, SSO domain/PKCE logic, and `id_token`
   signature verification.
-- Rate limiting, field-level encryption, signed download URLs (tracked in
-  `SECURITY.md`)
+- Production validation of shared rate limiting, field encryption and signed
+  identity-preview URLs; second-factor attempt limits and durable deletion
+  retries (see `SECURITY.md`)
 - Repository layer (`server/repositories`) for shared/testable query logic

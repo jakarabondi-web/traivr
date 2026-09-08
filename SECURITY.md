@@ -279,11 +279,16 @@ in `resolveOAuthSignIn`, not implicit adapter behavior.
   only (manual identity-verification uploads, see above); every function
   throws rather than mocking a fake success when `STORAGE_*` env vars are
   unset, since there's no meaningful decision to fake for "did this image
-  actually get stored." Not used for anything else yet — dataset exports in
-  particular have no worker processing them, so an export stays `QUEUED`
-  forever regardless of storage configuration.
-- **Redis/queue jobs** — abstraction points exist in `.env.example` but are
-  not yet implemented.
+  actually get stored." Dataset exports use a separate synchronous processor
+  (`src/server/services/export-processor.ts`): JSONL/CSV content is snapshotted
+  in the database and served through an authenticated download route.
+- **Background jobs** — no durable export or webhook queue. Exports run
+  synchronously; webhook delivery is fire-and-forget with no retry queue.
+- **Rate limiting** (`src/lib/security/rate-limit.ts`) — implemented for
+  password login, signup, contact, reset/resend and the versioned API. Uses
+  shared Upstash counters when configured, otherwise per-instance memory.
+  Store failures fail open; `RATE_LIMIT_ENABLED=false` disables limits.
+  Verify shared counters before relying on limits in a serverless deployment.
 - **Identity verification** (`src/lib/identity/persona.ts`) — simulates
   document/liveness/face-match/dedupe decisions unless `PERSONA_API_KEY` and
   `PERSONA_TEMPLATE_ID` are set, so the review workflow can be exercised end
@@ -298,10 +303,11 @@ in `resolveOAuthSignIn`, not implicit adapter behavior.
 - CSRF protection beyond Auth.js's built-in CSRF token handling for its own
   endpoints (custom mutating routes should add explicit protection as they're
   built).
-- Rate limiting (`RATE_LIMIT_ENABLED` env var is a placeholder — no limiter is
-  wired in yet). This matters most for `/api/v1/*`, where keys are currently
-  unthrottled.
-- Signed/expiring download URLs for `FileAsset`.
+- Attempt limits on the second-factor challenge path; existing password/API
+  limits do not cover every authentication entry point.
+- Durable retries for failed identity-image deletion. Manual identity previews
+  already use short-lived signed URLs; review completion must not be mistaken
+  for proof that storage deletion succeeded.
 - Full audit-log coverage (the `AuditLog` model exists; write call sites are
   added incrementally as admin actions are built).
 - Suspicious-login and anomaly detection (`RiskFlag` model exists; detection

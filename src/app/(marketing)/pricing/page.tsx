@@ -58,7 +58,7 @@ export default function PricingPage() {
                 <>
                   <div className="pointer-events-none absolute -top-20 -right-20 size-56 rounded-full bg-accent-violet/25 blur-3xl" />
                   <span className="relative mb-4 inline-flex w-fit items-center rounded-full bg-white/10 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-white/80">
-                    Most popular
+                    For ongoing projects
                   </span>
                 </>
               ) : null}
